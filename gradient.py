@@ -4,6 +4,23 @@ import matplotlib.pyplot as plt
 from autograd import grad
 
 
+class optim_result_t:
+    def __init__(self, minimum, min_func_value, num_of_iterations):
+        self.minimum = minimum
+        self.min_func_value = min_func_value
+        self.num_of_iterations = num_of_iterations
+
+
+class params_t:
+    def __init__(self, learning_rate, epsilon, max_iter, warunek1, warunek2, warunek3):
+        self.learning_rate = learning_rate
+        self.epsilon = epsilon
+        self.max_iter = max_iter
+        self.warunek1 = warunek1
+        self.warunek2 = warunek2
+        self.warunek3 = warunek3
+
+
 def make_plot():
     plt.plot([i for i in range(0, result.num_of_iterations + 1)],
              result.min_func_value)
@@ -22,49 +39,33 @@ def objective_function(x, alpha):
 
 
 new_objective_function = partial(objective_function, alpha=1)
+params = params_t(0.1, 1e-6, 100, 1, 1, 1)
 
 
-class optim_result_t:
-    def __init__(self, minimum, min_func_value, num_of_iterations):
-        self.minimum = minimum
-        self.min_func_value = min_func_value
-        self.num_of_iterations = num_of_iterations
-
-
-class params_t:
-    def __init__(self, learning_rate, epsilon, max_iter, warunek1, warunek2, warunek3):
-        self.learning_rate = learning_rate
-        self.epsilon = epsilon
-        self.max_iter = max_iter
-        self.warunek1 = warunek1
-        self.warunek2 = warunek2
-        self.warunek3 = warunek3
-
-
-def gradient_descent(
-    new_objective_function, x0, learning_rate=0.1, epsilon=1e-6, max_iter=100, warunek1=1
-) -> optim_result_t:
+def gradient_descent(new_objective_function, x0, params) -> optim_result_t:
     x = x0.copy()
     obj_func_values = []
-    for i in range(max_iter):
+    for i in range(params.max_iter):
         obj_func_values.append(new_objective_function(x=x))
         gradient_func = grad(new_objective_function)
         gradient = gradient_func(x)
-        if np.linalg.norm(gradient) <= epsilon:
+        if np.linalg.norm(gradient) <= params.epsilon:
             break
-        x = x - learning_rate * gradient
-        if warunek1 == 1 and np.max(np.abs(learning_rate * gradient)) < epsilon:
+        x = x - params.learning_rate * gradient
+        if (
+            params.warunek1 == 1
+            and np.max(np.abs(params.learning_rate * gradient)) < params.epsilon
+        ):
             break
     return optim_result_t(x, obj_func_values, i)
 
 
 x0 = np.array([-1, -2, -3, -4, -5, -6, -7, -8, -9])
-result = gradient_descent(
-    new_objective_function, x0
-)
+result = gradient_descent(new_objective_function, x0, params)
 print(f"Minimum found: {result.minimum}")
 print(
-    f"Value of the objective function - minimum: {new_objective_function(result.minimum)}")
+    f"Value of the objective function - minimum: {new_objective_function(result.minimum)}"
+)
 print(f"Number of iterations: {result.num_of_iterations}")
 
 plt.plot([i for i in range(0, result.num_of_iterations + 1)],
