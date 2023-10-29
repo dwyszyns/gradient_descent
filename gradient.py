@@ -1,5 +1,4 @@
 import autograd.numpy as np
-from math import log10
 from functools import partial
 import matplotlib.pyplot as plt
 from autograd import grad
@@ -13,47 +12,44 @@ class optim_result_t:
 
 
 class params_t:
-    def __init__(self, learning_rate, epsilon, max_iter, warunek1, warunek2, warunek3):
+    def __init__(
+        self,
+        learning_rate,
+        epsilon,
+        max_iter,
+        max_iter_flag,
+        epsilon_flag,
+        convergence_flag,
+    ):
         self.learning_rate = learning_rate
         self.epsilon = epsilon
         self.max_iter = max_iter
-        self.warunek1 = warunek1
-        self.warunek2 = warunek2
-        self.warunek3 = warunek3
+        self.max_iter_flag = max_iter_flag
+        self.epsilon_flag = epsilon_flag
+        self.convergence_flag = convergence_flag
 
 
 def make_plot(result):
-    names = ["max iteration = 50",
-             "max iteration = 100",
-             "max iteration = 250",
-             "max iteration = 1000"]
     for idx, result in enumerate(results):
         plt.plot(
             [i for i in range(0, result.num_of_iterations + 1)],
             result.min_func_value,
-            label=names[idx],
+            label=f"Result {idx+1}",
         )
-    # plt.plot(
-    #     [i for i in range(0, result[0].num_of_iterations + 1)],
-    #     result[0].min_func_value)
-
-    # plt.yscale("log")
     plt.xlabel("Iteration")
     plt.ylabel("Value of the objective function")
     plt.title("Plot of the objective function values from iterations")
-    plt.title(f"α = 1, epsilon = 1e-6, β = 0.1")
     plt.legend()
-    plt.savefig("a1_rozne_iter.png")
     plt.show()
 
 
 def objective_function(x, alpha):
     n = len(x)
     i = np.arange(n) + 1
-    if (n - 1) != 0:
-        x0 = (alpha ** ((i - 1) / (n - 1))) * (x**2)
-    else:
+    if (n - 1) == 0:
         x0 = x
+    else:
+        x0 = (alpha ** ((i - 1) / (n - 1))) * (x**2)
     return x0.sum()
 
 
@@ -62,47 +58,40 @@ objective_function_10 = partial(objective_function, alpha=10.0)
 objective_function_100 = partial(objective_function, alpha=100.0)
 
 
-def gradient_descent(new_objective_function, x0, params) -> optim_result_t:
+def gradient_descent(obj_function, x0, params) -> optim_result_t:
     x = x0.copy()
     obj_func_values = []
-    if params.warunek3 == 1:
-        for i in range(params.max_iter):
-            obj_func_values.append(new_objective_function(x=x))
-            gradient_func = grad(new_objective_function)
-            gradient = gradient_func(x)
-            if np.linalg.norm(gradient) <= params.epsilon and params.warunek2 == 1:
-                break
-            x = x - params.learning_rate * gradient
-            if (
-                params.warunek1 == 1
-                and np.max(np.abs(params.learning_rate * gradient)) < params.epsilon
-            ):
-                break
-        return optim_result_t(x, obj_func_values, i)
-    else:
-        return optim_result_t(x, obj_func_values, 0)
+    i = 0
+    while True:
+        obj_func_values.append(obj_function(x=x))
+        gradient_func = grad(obj_function)
+        gradient_value = gradient_func(x)
+        if (
+            np.linalg.norm(gradient_value) <= params.epsilon
+            and params.epsilon_flag == 1
+        ):
+            break
+        x = x - params.learning_rate * gradient_value
+        if (
+            params.convergence_flag == 1
+            and np.max(np.abs(params.learning_rate * gradient_value)) < params.epsilon
+        ):
+            break
+        if params.max_iter_flag == 1 and i >= params.max_iter:
+            break
+        i += 1
+    return optim_result_t(x, obj_func_values, i)
 
 
 x0 = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
 params = [
-    params_t(0.1, 1e-6, 10, 1, 1, 1),
-    params_t(0.1, 1e-6, 50, 1, 1, 1),
     params_t(0.1, 1e-6, 100, 1, 1, 1),
-    params_t(0.1, 1e-6, 500, 1, 1, 1)
+    params_t(0.05, 1e-6, 100, 1, 1, 1),
+    params_t(0.01, 1e-6, 100, 1, 1, 1),
+    params_t(0.001, 1e-6, 100, 1, 1, 1),
 ]
-results = [
-    gradient_descent(objective_function_1, x0, params[0]),
-    gradient_descent(objective_function_1, x0, params[1]),
-    gradient_descent(objective_function_1, x0, params[2]),
-    gradient_descent(objective_function_1, x0, params[3]),
-]
+results = [gradient_descent(objective_function_10, x0, param)
+           for param in params]
 
 make_plot(results)
-
-
-# print(f"Minimum found: {results[0].minimum}")
-# print(
-#     f"Value of the objective function - minimum: {objective_function_1(results[0].minimum)}"
-# )
-# print(f"Number of iterations: {results[0].num_of_iterations}")
